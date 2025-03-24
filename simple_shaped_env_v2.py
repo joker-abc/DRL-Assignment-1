@@ -199,5 +199,5 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
     
-    agent_score = evaluate_agent("student_agent_v2.py", env_config, render=True)
+    agent_score = evaluate_agent("student_agent.py", env_config, render=True)
     print(f"Final Score: {agent_score}")

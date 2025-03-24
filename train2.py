@@ -1,18 +1,16 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import BaseCallback
-from simple_shaped_env_v2 import MiniTaxiEnv as SimpleTaxiEnv 
+from simple_shaped_env_v2 import MiniTaxiEnv as SimpleTaxiEnv
 
 # 1️⃣ Fixed Custom LSTM Feature Extractor
-class LSTMFeatureEncoder(BaseFeaturesExtractor):
-    """
-    A custom feature extractor using LSTM for temporal learning in PPO.
-    """
+class CustomLSTMFeatureExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space, lstm_hidden_size=64):
         input_dim = observation_space.shape[0]  # Fix: Correct input size
         super().__init__(observation_space, features_dim=lstm_hidden_size)
@@ -35,26 +33,22 @@ class LSTMFeatureEncoder(BaseFeaturesExtractor):
         return self.fc(lstm_out)  
 
 # 2️⃣ Define Custom LSTM Policy
-class LSTMPolicy(ActorCriticPolicy):
-    """
-    Custom PPO policy that uses the LSTMFeatureEncoder.
-    """
+class CustomLSTMPolicy(ActorCriticPolicy):
     def __init__(self, observation_space, action_space, lr_schedule, **kwargs):
-        super(LSTMPolicy, self).__init__(
+        super().__init__(
             observation_space,
             action_space,
             lr_schedule,
-            features_extractor_class=LSTMFeatureEncoder,
-            features_extractor_kwargs={'lstm_hidden_size': 64},
-            **kwargs,
+            features_extractor_class=CustomLSTMFeatureExtractor,
+            features_extractor_kwargs=dict(lstm_hidden_size=64),
+            **kwargs
         )
-
 # 3️⃣ Environment Setup
 env = SimpleTaxiEnv(grid_size=5, fuel_limit=5000)
 
 # 4️⃣ Train PPO with Custom LSTM
 model = PPO(
-    policy=LSTMPolicy,
+    policy=CustomLSTMPolicy,
     env=env,
     learning_rate=0.0003,
     n_steps=512,  
@@ -65,8 +59,6 @@ model = PPO(
 )
 
 model.learn(total_timesteps=100000)
-
-model.save("ppo_taxi_model")
 
 # 5️⃣ Evaluate the Model
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10)
