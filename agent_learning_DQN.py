@@ -65,7 +65,8 @@ for episode in range(EPISODES):
     state = torch.tensor(obs[10:14], dtype=torch.float32).to(device)
     total_reward = 0
     done = False
-
+    print("episode", episode)
+    
     while not done:
         if random.random() < epsilon:
             action = random.randint(0, 5)
@@ -73,6 +74,7 @@ for episode in range(EPISODES):
             with torch.no_grad():
                 q_values = policy_net(state)
                 action = torch.argmax(q_values).item()
+            
 
         next_obs, reward, done, _ = env.step(action)
         next_state = torch.tensor(next_obs[10:14], dtype=torch.float32).to(device)
