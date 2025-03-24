@@ -2,3 +2,6 @@ tqdm
 requests
 argparse
 torch
+stable-baselines3
+gym
+gymnasium
