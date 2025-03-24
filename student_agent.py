@@ -48,25 +48,50 @@
 #     except:
 #         action = random.choice([0, 1])
 #     return action
-
-from stable_baselines3 import PPO
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import random
 
-# 載入 PPO 模型
-model = PPO.load("ppo_taxi_model.zip")  # 或 "ppo_taxi_model"
+# Actor-Critic 神經網路結構
+class PPOActorCritic(nn.Module):
+    def __init__(self, input_dim=16, action_dim=6):
+        super(PPOActorCritic, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.actor = nn.Linear(64, action_dim)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        logits = self.actor(x)
+        return logits
+
+# 載入模型
+device = torch.device("cpu")
+model = PPOActorCritic(input_dim=16, action_dim=6)
+model.load_state_dict(torch.load("ppo_policy_only.pth", map_location=device))
+model.eval()
+
+# state 前處理 & 推論
+def preprocess_state(state):
+    if isinstance(state, tuple):
+        state = state[0]
+    state = np.array(state, dtype=np.float32)
+    return torch.tensor(state, dtype=torch.float32).to(device)
 
 def get_action(obs):
     try:
-        # 如果 obs 是 (obs, info) 的格式，取出 obs
-        if isinstance(obs, tuple):
-            obs = obs[0]
-        obs = np.array(obs, dtype=np.float32)
-        action, _ = model.predict(obs, deterministic=True)
+        state = preprocess_state(obs)
+        with torch.no_grad():
+            logits = model(state)
+            action = torch.argmax(logits).item()
         return int(action)
     except Exception as e:
-        print(f"[Fallback] Error: {e}")
-        return random.choice([0, 1, 2, 3, 4, 5])  # 隨機合法行動
+        print(f"[Fallback Error] {e}")
+        return random.choice([0, 1, 2, 3, 4, 5])
+
 
     
         

@@ -63,3 +63,5 @@ model.learn(total_timesteps=100000)
 # 5️⃣ Evaluate the Model
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10)
 print(f"Mean reward: {mean_reward} +/- {std_reward}")
+
+torch.save(model.policy.state_dict(), "ppo_policy_only.pth")
