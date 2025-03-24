@@ -1,37 +1,37 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 import random
 
-# 與 MLP policy 結構一致的推論網路
-class PPOActorCritic(nn.Module):
+# 跟 policy_net 一模一樣的結構
+class PPOActor(nn.Module):
     def __init__(self, input_dim=16, action_dim=6):
-        super(PPOActorCritic, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.actor = nn.Linear(64, action_dim)
+        super(PPOActor, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, action_dim)
+        )
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        logits = self.actor(x)
-        return logits
+        return self.model(x)
 
-# 載入權重
+# 載入訓練好的 MLP policy_net
 device = torch.device("cpu")
-model = PPOActorCritic(input_dim=16, action_dim=6)
+model = PPOActor(input_dim=16, action_dim=6)
 model.load_state_dict(torch.load("ppo_policy_only.pth", map_location=device))
 model.eval()
 
-# 前處理函數：把 obs 轉成 Tensor
+# 前處理函數
 def preprocess_state(state):
     if isinstance(state, tuple):
         state = state[0]
     state = np.array(state, dtype=np.float32)
     return torch.tensor(state, dtype=torch.float32).to(device)
 
-# 取得行動
+# 推論行動
 def get_action(obs):
     try:
         state = preprocess_state(obs)
