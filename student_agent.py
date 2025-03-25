@@ -1,37 +1,30 @@
-import torch
-import torch.nn as nn
+import pickle
 import numpy as np
 import random
 
-# 與 policy_net 完全一致，避免出現 key mismatch
-class PPOActor(nn.Sequential):
-    def __init__(self, input_dim=16, action_dim=6):
-        super().__init__(
-            nn.Linear(input_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, action_dim)
-        )
+# 載入訓練好的 Q-table
+with open("q_table.pkl", "rb") as f:
+    Q_table = pickle.load(f)
 
-device = torch.device("cpu")
-model = PPOActor(input_dim=16, action_dim=6)
-model.load_state_dict(torch.load("ppo_policy_only.pth", map_location=device))
-model.eval()
+# 將 dict 轉成預設值為 0 的 defaultdict 結構
+from collections import defaultdict
+Q_table = defaultdict(lambda: np.zeros(6), Q_table)
 
-def preprocess_state(state):
-    if isinstance(state, tuple):
-        state = state[0]
-    state = np.array(state, dtype=np.float32)
-    return torch.tensor(state, dtype=torch.float32).to(device)
+# 根據 obs 轉換為簡化狀態（需與訓練時一致）
+def simplify_state(obs):
+    return (
+        int(obs[0]), int(obs[1]),
+        int(obs[10]), int(obs[11]),
+        int(obs[12]), int(obs[13])
+    )
 
+# 根據 Q-table 選擇動作
 def get_action(obs):
     try:
-        state = preprocess_state(obs)
-        with torch.no_grad():
-            logits = model(state)
-            action = torch.argmax(logits).item()
-        return int(action)
+        state = simplify_state(obs)
+        action_values = Q_table[state]
+        action = int(np.argmax(action_values))
     except Exception as e:
-        print(f"[Fallback Error] {e}")
-        return random.choice([0, 1, 2, 3, 4, 5])
+        print(f"[Warning] Using random action due to error: {e}")
+        action = random.randint(0, 5)
+    return action
